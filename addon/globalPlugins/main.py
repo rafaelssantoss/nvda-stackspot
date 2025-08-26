@@ -1,21 +1,25 @@
-import globalPluginHandler, ui, speech
-from stackspot import Stackspot
+import api, globalPluginHandler, ui, speech, screenBitmap
+from .stackspot import Stackspot
 
 """ Um exemplo de execução de integração com stackspot com entrada de estimulo NVDA"""
 
-
 class GlobalPlugin(globalPluginHandler.GlobalPlugin):
+	stackspot = Stackspot()
+	def script_runStackSpot(self, gesture):
+		obj = api.getNavigatorObject()
+		location = obj.location
+		sb = screenBitmap.ScreenBitmap(location.width, location.height)
 
-    def script_runStackSpot(self, gesture):
-        prompt = ui.getInput("Prompt para o agente StackSpot:")
-        if not prompt:
-            return
-        client = Stackspot.instance()
-        execution = client.ai.quick_command.create_execution('my-quick-command-slug', prompt)
-        execution = client.ai.quick_command.poll_execution(execution)
-        resp = execution.get('result', 'Sem resposta')
-        speech.speakText(resp)
+		pixels = sb.captureImage(
+			location.left,
+			location.top,
+			location.width,
+			location.height
+		)
 
-    __gestures = {
-        "kb:NVDA+alt+S": "runStackSpot"
-    }
+		response = self.stackspot.describe_image(pixels)
+		ui.message(response)
+
+	__gestures = {
+		"kb:NVDA+alt+S": "runStackSpot"
+	}
