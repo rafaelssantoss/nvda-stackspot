@@ -1,5 +1,10 @@
-import api, globalPluginHandler, ui, speech, screenBitmap
+import os
+import sys
+sys.path.insert(0, os.path.split(os.path.split(__file__)[0])[0] + "\\lib")
+
+import api, globalPluginHandler, ui, speech, tempfile
 from .stackspot import Stackspot
+from PIL import ImageGrab
 
 """ Um exemplo de execução de integração com stackspot com entrada de estimulo NVDA"""
 
@@ -8,17 +13,17 @@ class GlobalPlugin(globalPluginHandler.GlobalPlugin):
 	def script_runStackSpot(self, gesture):
 		obj = api.getNavigatorObject()
 		location = obj.location
-		sb = screenBitmap.ScreenBitmap(location.width, location.height)
+		bounding_box = (location.left, location.top, location.left + location.width, location.top + location.height)
+		snap = ImageGrab.grab(bounding_box)
+		file = tempfile.mktemp(suffix=".png")
+		snap.save(file)
 
-		pixels = sb.captureImage(
-			location.left,
-			location.top,
-			location.width,
-			location.height
-		)
-
-		response = self.stackspot.describe_image(pixels)
-		ui.message(response)
+		try:
+			response = self.stackspot.describe_image(file)
+			log.info(response)
+			ui.message(response)
+		finally:
+			os.remove(file)
 
 	__gestures = {
 		"kb:NVDA+alt+S": "runStackSpot"
