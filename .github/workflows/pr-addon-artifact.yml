@@ -21,6 +21,8 @@ jobs:
         run: |
           pip install scons
           pip install markdown
+          pip install -r addon/globalPlugins/requirements.txt -t addon/lib --platform=win32 --python-version=3.11 --only-binary=:all:
+
       - name: generate addon
         run: |
           rm -f *.nvda-addon || true
