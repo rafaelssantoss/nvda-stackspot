@@ -1,4 +1,4 @@
-name: EnhancedFindDialogCITestPrBuild
+name: NVDAStackspotCITestPrBuild
 on:
   pull_request:
     types: [opened, synchronize]
