@@ -49,7 +49,6 @@ class Stackspot:
 		log.info(F"Subindo imagem para {upload_url}")
 
 		with open(file, "rb") as f:
-			image_bytes = f.read()
 			content_response = requests.post(upload_url, headers={
 			}, data={
 				"key": json["form"]["key"],
@@ -58,13 +57,14 @@ class Stackspot:
 				"x-amz-date": json["form"]["x-amz-date"],
 				"x-amz-security-token": json["form"]["x-amz-security-token"],
 				"policy": json["form"]["policy"],
-				"x-amz-signature": json["form"]["x-amz-signature"],
-				"file": image_bytes
+				"x-amz-signature": json["form"]["x-amz-signature"]
+			}, files={
+				"file": f
 			})
 			log.info(content_response.content)
 			content_response.raise_for_status()
 
-			return json()["id"]
+			return json["id"]
 
 	def _get_description(self, image_id: str, prompt: str) -> str:
 		chat_response = requests.post(CHAT_URL, headers={

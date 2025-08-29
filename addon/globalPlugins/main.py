@@ -3,6 +3,7 @@ import sys
 sys.path.insert(0, os.path.split(os.path.split(__file__)[0])[0] + "\\lib")
 
 import api, globalPluginHandler, ui, speech, tempfile
+from logHandler import log
 from .stackspot import Stackspot
 from PIL import ImageGrab
 
