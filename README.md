@@ -26,4 +26,21 @@ No windows, deve ser setado o valor de variável de ambiente no PATH para que se
 
 
 Para ver se está funcionando normalmente, teste baixando a biblioteca do stackspot usando o comando `pip install -r addon/globalPlugins/requirements.txt`
- 
+
+## Compilando .nvda-addon localmente
+
+Para compilar o addon localmente, execute os seguintes comandos:
+
+Passo 1: dependências para compilação
+
+`pip install scons markdown`
+
+Passo 2: baixar as dependências para a cópia do NVDA em execução
+
+`pip install -r addon/globalPlugins/requirements.txt -t addon/lib --platform=win32 --python-version=3.11 --only-binary=:all:`
+
+Passo 3: gerar addon
+
+`scons`
+
+Observação: depois de compilar a primeira vez, é mais fácil modificar o addon dentro da pasta %APPDATA%\nvda\addons\nvda-stackspot e copiar as modificações para o repositório, pois assim não é necessário compilar o addon toda vez que for realizada uma mudança.Também é possível gerar addon abrindo um PR, nesse caso a pipeline fará esse procedimento automaticamente.
