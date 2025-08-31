@@ -64,8 +64,9 @@ import struct
 import threading
 import weakref
 
+from pip._vendor import six
+
 from .. import util
-from ..packages import six
 from ..util.ssl_ import PROTOCOL_TLS_CLIENT
 from ._securetransport.bindings import CoreFoundation, Security, SecurityConst
 from ._securetransport.low_level import (
@@ -89,7 +90,7 @@ __all__ = ["inject_into_urllib3", "extract_from_urllib3"]
 HAS_SNI = True
 
 orig_util_HAS_SNI = util.HAS_SNI
-orig_util_SSLContext = addon.lib.pip._vendor.urllib3.util.ssl_.SSLContext
+orig_util_SSLContext = util.ssl_.SSLContext
 
 # This dictionary is used by the read callback to obtain a handle to the
 # calling wrapped socket. This is a pretty silly approach, but for now it'll
@@ -190,11 +191,11 @@ def inject_into_urllib3():
     Monkey-patch urllib3 with SecureTransport-backed SSL-support.
     """
     util.SSLContext = SecureTransportContext
-    addon.lib.pip._vendor.urllib3.util.ssl_.SSLContext = SecureTransportContext
+    util.ssl_.SSLContext = SecureTransportContext
     util.HAS_SNI = HAS_SNI
-    addon.lib.pip._vendor.urllib3.util.ssl_.HAS_SNI = HAS_SNI
+    util.ssl_.HAS_SNI = HAS_SNI
     util.IS_SECURETRANSPORT = True
-    addon.lib.pip._vendor.urllib3.util.ssl_.IS_SECURETRANSPORT = True
+    util.ssl_.IS_SECURETRANSPORT = True
 
 
 def extract_from_urllib3():
@@ -202,11 +203,11 @@ def extract_from_urllib3():
     Undo monkey-patching by :func:`inject_into_urllib3`.
     """
     util.SSLContext = orig_util_SSLContext
-    addon.lib.pip._vendor.urllib3.util.ssl_.SSLContext = orig_util_SSLContext
+    util.ssl_.SSLContext = orig_util_SSLContext
     util.HAS_SNI = orig_util_HAS_SNI
-    addon.lib.pip._vendor.urllib3.util.ssl_.HAS_SNI = orig_util_HAS_SNI
+    util.ssl_.HAS_SNI = orig_util_HAS_SNI
     util.IS_SECURETRANSPORT = False
-    addon.lib.pip._vendor.urllib3.util.ssl_.IS_SECURETRANSPORT = False
+    util.ssl_.IS_SECURETRANSPORT = False
 
 
 def _read_callback(connection_id, data_buffer, data_length_pointer):
@@ -854,7 +855,7 @@ class SecureTransportContext(object):
 
     def set_ciphers(self, ciphers):
         # For now, we just require the default cipher string.
-        if ciphers != addon.lib.pip._vendor.urllib3.util.ssl_.DEFAULT_CIPHERS:
+        if ciphers != util.ssl_.DEFAULT_CIPHERS:
             raise ValueError("SecureTransport doesn't support custom cipher strings")
 
     def load_verify_locations(self, cafile=None, capath=None, cadata=None):

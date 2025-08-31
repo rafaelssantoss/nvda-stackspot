@@ -68,8 +68,8 @@ __all__ = ["inject_into_urllib3", "extract_from_urllib3"]
 
 # Map from urllib3 to PyOpenSSL compatible parameter-values.
 _openssl_versions: dict[int, int] = {
-    addon.lib.urllib3.util.ssl_.PROTOCOL_TLS: OpenSSL.SSL.SSLv23_METHOD,  # type: ignore[attr-defined]
-    addon.lib.urllib3.util.ssl_.PROTOCOL_TLS_CLIENT: OpenSSL.SSL.SSLv23_METHOD,  # type: ignore[attr-defined]
+    util.ssl_.PROTOCOL_TLS: OpenSSL.SSL.SSLv23_METHOD,  # type: ignore[attr-defined]
+    util.ssl_.PROTOCOL_TLS_CLIENT: OpenSSL.SSL.SSLv23_METHOD,  # type: ignore[attr-defined]
     ssl.PROTOCOL_TLSv1: OpenSSL.SSL.TLSv1_METHOD,
 }
 
@@ -130,7 +130,7 @@ _openssl_to_ssl_maximum_version: dict[int, int] = {
 # OpenSSL will only write 16K at a time
 SSL_WRITE_BLOCKSIZE = 16384
 
-orig_util_SSLContext = addon.lib.urllib3.util.ssl_.SSLContext
+orig_util_SSLContext = util.ssl_.SSLContext
 
 
 log = logging.getLogger(__name__)
@@ -142,18 +142,18 @@ def inject_into_urllib3() -> None:
     _validate_dependencies_met()
 
     util.SSLContext = PyOpenSSLContext  # type: ignore[assignment]
-    addon.lib.urllib3.util.ssl_.SSLContext = PyOpenSSLContext  # type: ignore[assignment]
+    util.ssl_.SSLContext = PyOpenSSLContext  # type: ignore[assignment]
     util.IS_PYOPENSSL = True
-    addon.lib.urllib3.util.ssl_.IS_PYOPENSSL = True
+    util.ssl_.IS_PYOPENSSL = True
 
 
 def extract_from_urllib3() -> None:
     "Undo monkey-patching by :func:`inject_into_urllib3`."
 
     util.SSLContext = orig_util_SSLContext
-    addon.lib.urllib3.util.ssl_.SSLContext = orig_util_SSLContext
+    util.ssl_.SSLContext = orig_util_SSLContext
     util.IS_PYOPENSSL = False
-    addon.lib.urllib3.util.ssl_.IS_PYOPENSSL = False
+    util.ssl_.IS_PYOPENSSL = False
 
 
 def _validate_dependencies_met() -> None:
@@ -508,7 +508,7 @@ class PyOpenSSLContext:
         cnx = OpenSSL.SSL.Connection(self._ctx, sock)
 
         # If server_hostname is an IP, don't use it for SNI, per RFC6066 Section 3
-        if server_hostname and not addon.lib.urllib3.util.ssl_.is_ipaddress(server_hostname):
+        if server_hostname and not util.ssl_.is_ipaddress(server_hostname):
             if isinstance(server_hostname, str):
                 server_hostname = server_hostname.encode("utf-8")
             cnx.set_tlsext_host_name(server_hostname)
