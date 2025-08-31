@@ -1,12 +1,12 @@
 import os
 import sys
 import ctypes
-import struct
 import tempfile
 import api
 import globalPluginHandler
 import speech
 import logHandler
+from PIL import Image
 
 addon_dir = os.path.dirname(os.path.abspath(__file__))
 lib_dir = os.path.join(addon_dir, '..', 'lib')
@@ -58,14 +58,18 @@ def capture_screen(rect):
     buffer = ctypes.create_string_buffer(total_bytes)
     gdi32.GetBitmapBits(bmp, total_bytes, buffer)
 
-    tmp_file = os.path.join(tempfile.gettempdir(), "focused_image.bmp")
-    with open(tmp_file, "wb") as f:
-        f.write(b'BM')
-        f.write(struct.pack('<IHHI', 14 + 40 + total_bytes, 0, 0, 14 + 40))
-        f.write(struct.pack('<IIIHHIIIIII',
-                            40, width, height, 1, 24, 0,
-                            total_bytes, 0, 0, 0, 0))
-        f.write(buffer)
+    image = Image.frombuffer(
+        'RGB',
+        (width, height),
+        buffer,
+        'raw',
+        'BGR',
+        bmp_struct.bmWidthBytes,
+        1
+    )
+
+    tmp_file = os.path.join(tempfile.gettempdir(), "focused_image.png")
+    image.save(tmp_file, format='PNG')
 
     gdi32.DeleteObject(bmp)
     gdi32.DeleteDC(img_dc)
@@ -83,7 +87,7 @@ class GlobalPlugin(globalPluginHandler.GlobalPlugin):
 
             if not rect:
                 x, y = api.getMousePosition()
-                rect = (x - 100, y - 100, 200, 200)  # 200x200 pixels centrado no cursor
+                rect = (x - 100, y - 100, 200, 200)
                 speech.speakText("Não foi detectado objeto acessível, capturando área do cursor.")
 
             tmp_file = capture_screen(rect)
