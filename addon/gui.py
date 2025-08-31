@@ -1,6 +1,5 @@
 import wx
 import gui
-import globalPluginHandler
 import addonHandler
 import addonConfig
 
@@ -36,18 +35,3 @@ class StackspotSettingsPanel(gui.SettingsPanel):
         addonConfig.setPref("client_secret", self.clientSecretCtrl.GetValue())
         addonConfig.setPref("realm", self.realmCtrl.GetValue())
         addonConfig.setPref("slug", self.slugCtrl.GetValue())
-
-
-class GlobalPlugin(globalPluginHandler.GlobalPlugin):
-    """
-    Registra o painel StackspotSettingsPanel nas configurações do NVDA
-    """
-
-    def __init__(self):
-        super().__init__()
-        gui.settingsDialogs.NVDASettingsDialog.categoryClasses.append(StackspotSettingsPanel)
-
-    def terminate(self):
-        super().terminate()
-        if StackspotSettingsPanel in gui.settingsDialogs.NVDASettingsDialog.categoryClasses:
-            gui.settingsDialogs.NVDASettingsDialog.categoryClasses.remove(StackspotSettingsPanel)
