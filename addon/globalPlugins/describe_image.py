@@ -17,7 +17,7 @@ import globalPluginHandler
 import speech
 
 from .stackspot.stackspot import Stackspot
-from . import addonConfig
+import addonConfig
 
 client_id = addonConfig.getPref("client_id")
 client_secret = addonConfig.getPref("client_secret")
