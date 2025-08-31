@@ -6,6 +6,7 @@ import tempfile
 import api
 import globalPluginHandler
 import speech
+import logHandler
 
 addon_dir = os.path.dirname(os.path.abspath(__file__))
 lib_dir = os.path.join(addon_dir, '..', 'lib')
@@ -97,7 +98,8 @@ class GlobalPlugin(globalPluginHandler.GlobalPlugin):
             speech.speakText(result)
 
         except Exception as e:
-            speech.speakText(f"Erro: {e}")
+            logHandler.log.error(f'Error: {e}')
+            speech.speakText(f"Error stackspot")
 
     __gestures = {
         "kb:NVDA+i": "descreverImagem"
