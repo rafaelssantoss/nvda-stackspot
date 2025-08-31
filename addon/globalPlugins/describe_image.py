@@ -7,7 +7,7 @@ import api
 import globalPluginHandler
 import speech
 
-from stackspot import Stackspot
+from .stackspot.stackspot import Stackspot
 from . import addonConfig
 
 client_id = addonConfig.getPref("client_id")
