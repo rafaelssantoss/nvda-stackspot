@@ -1,37 +1,33 @@
 import wx
-import gui.settingsDialogs as settings
+import gui
+import globalPluginHandler
 import addonHandler
 import addonConfig
 
 addonHandler.initTranslation()
 
 
-class StackspotSettingsPanel(settings.SettingsPanel):
-    # Título exibido na aba de configurações
+class StackspotSettingsPanel(gui.SettingsPanel):
     title = "Stackspot AI"
 
     def makeSettings(self, sizer):
         sHelper = self.makeSettingsHelper(sizer)
 
         self.clientIdCtrl = sHelper.addLabeledControl(
-            "Client ID:",
-            wx.TextCtrl,
+            "Client ID:", wx.TextCtrl,
             value=addonConfig.getPref("client_id")
         )
         self.clientSecretCtrl = sHelper.addLabeledControl(
-            "Client Secret:",
-            wx.TextCtrl,
+            "Client Secret:", wx.TextCtrl,
             value=addonConfig.getPref("client_secret"),
             style=wx.TE_PASSWORD
         )
         self.realmCtrl = sHelper.addLabeledControl(
-            "Realm:",
-            wx.TextCtrl,
+            "Realm:", wx.TextCtrl,
             value=addonConfig.getPref("realm")
         )
         self.slugCtrl = sHelper.addLabeledControl(
-            "Slug do Quick Command:",
-            wx.TextCtrl,
+            "Slug do Quick Command:", wx.TextCtrl,
             value=addonConfig.getPref("slug")
         )
 
@@ -42,7 +38,16 @@ class StackspotSettingsPanel(settings.SettingsPanel):
         addonConfig.setPref("slug", self.slugCtrl.GetValue())
 
 
-import gui.settingsDialogs
+class GlobalPlugin(globalPluginHandler.GlobalPlugin):
+    """
+    Registra o painel StackspotSettingsPanel nas configurações do NVDA
+    """
 
-if StackspotSettingsPanel not in gui.settingsDialogs.NVDASettingsDialog.categoryClasses:
-    gui.settingsDialogs.NVDASettingsDialog.categoryClasses.append(StackspotSettingsPanel)
+    def __init__(self):
+        super().__init__()
+        gui.settingsDialogs.NVDASettingsDialog.categoryClasses.append(StackspotSettingsPanel)
+
+    def terminate(self):
+        super().terminate()
+        if StackspotSettingsPanel in gui.settingsDialogs.NVDASettingsDialog.categoryClasses:
+            gui.settingsDialogs.NVDASettingsDialog.categoryClasses.remove(StackspotSettingsPanel)
