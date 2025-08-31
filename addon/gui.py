@@ -1,9 +1,6 @@
 import wx
 import gui
-import addonHandler
 import addonConfig
-
-addonHandler.initTranslation()
 
 
 class StackspotSettingsPanel(gui.SettingsPanel):
