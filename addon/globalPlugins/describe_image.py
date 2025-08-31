@@ -6,7 +6,6 @@ import api
 import globalPluginHandler
 import speech
 import logHandler
-from PIL import Image
 
 addon_dir = os.path.dirname(os.path.abspath(__file__))
 lib_dir = os.path.join(addon_dir, '..', 'lib')
@@ -18,6 +17,7 @@ for path in (lib_dir, addon_root):
 
 from stackspot.stackspot import Stackspot
 import addonConfig
+from PIL import Image
 
 client_id = addonConfig.getPref("client_id")
 client_secret = addonConfig.getPref("client_secret")
