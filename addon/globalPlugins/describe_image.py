@@ -5,9 +5,6 @@ import api
 import globalPluginHandler
 import speech
 import logHandler
-import win32gui
-import win32ui
-import win32con
 
 addon_dir = os.path.dirname(os.path.abspath(__file__))
 lib_dir = os.path.join(addon_dir, '..', 'lib')
@@ -17,8 +14,18 @@ for path in (lib_dir, addon_root):
     if path not in sys.path:
         sys.path.insert(0, path)
 
+win32_path = os.path.join(lib_dir, 'win32')
+if win32_path not in sys.path:
+    sys.path.insert(0, win32_path)
+
 from stackspot.stackspot import Stackspot
 import addonConfig
+
+# Importações corretas do win32
+from win32 import win32gui
+from win32 import win32ui
+from win32 import win32con
+
 
 client_id = addonConfig.getPref("client_id")
 client_secret = addonConfig.getPref("client_secret")
