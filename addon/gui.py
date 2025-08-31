@@ -1,7 +1,7 @@
 import wx
 import gui.settingsDialogs as settings
 import addonHandler
-from . import addonConfig
+import addonConfig
 
 addonHandler.initTranslation()
 

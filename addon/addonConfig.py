@@ -12,7 +12,11 @@ if section not in config.conf.spec:
 
 
 def getPref(key: str):
-    return config.conf[section].get(key, "")
+    try:
+        return config.conf[section][key]
+    except KeyError:
+        return ""
+
 
 
 def setPref(key: str, value: str):
