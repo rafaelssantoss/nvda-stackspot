@@ -11,7 +11,7 @@ config.conf.spec[section] = {
 
 
 def getPref(key: str):
-    return config.conf[section][key]
+    return config.conf[section].get(key, "")
 
 
 def setPref(key: str, value: str):
