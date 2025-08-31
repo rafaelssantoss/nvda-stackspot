@@ -2,8 +2,7 @@ import wx
 import gui
 import gui.settingsDialogs as settings
 import addonHandler
-from . import addonConfig
-
+from .globalPlugins import addonConfig
 
 addonHandler.initTranslation()
 
