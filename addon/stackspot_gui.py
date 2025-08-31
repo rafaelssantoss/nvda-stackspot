@@ -1,9 +1,9 @@
 import wx
-import gui
+import gui.settingsDialogs as settings
 import addonConfig
 
 
-class StackspotSettingsPanel(gui.SettingsPanel):
+class StackspotSettingsPanel(settings.SettingsPanel):
     title = "Stackspot AI"
 
     def makeSettings(self, sizer):
