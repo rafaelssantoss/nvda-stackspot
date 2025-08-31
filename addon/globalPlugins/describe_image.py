@@ -41,26 +41,6 @@ def capture_screen(rect):
     SRCCOPY = 0x00CC0020
     gdi32.BitBlt(img_dc, 0, 0, width, height, desktop_dc, x, y, SRCCOPY)
 
-    class BITMAPFILEHEADER(ctypes.Structure):
-        _fields_ = [("bfType", ctypes.c_ushort),
-                    ("bfSize", ctypes.c_uint),
-                    ("bfReserved1", ctypes.c_ushort),
-                    ("bfReserved2", ctypes.c_ushort),
-                    ("bfOffBits", ctypes.c_uint)]
-
-    class BITMAPINFOHEADER(ctypes.Structure):
-        _fields_ = [("biSize", ctypes.c_uint),
-                    ("biWidth", ctypes.c_int),
-                    ("biHeight", ctypes.c_int),
-                    ("biPlanes", ctypes.c_ushort),
-                    ("biBitCount", ctypes.c_ushort),
-                    ("biCompression", ctypes.c_uint),
-                    ("biSizeImage", ctypes.c_uint),
-                    ("biXPelsPerMeter", ctypes.c_int),
-                    ("biYPelsPerMeter", ctypes.c_int),
-                    ("biClrUsed", ctypes.c_uint),
-                    ("biClrImportant", ctypes.c_uint)]
-
     class BITMAP(ctypes.Structure):
         _fields_ = [("bmType", ctypes.c_int),
                     ("bmWidth", ctypes.c_int),
@@ -97,15 +77,15 @@ class GlobalPlugin(globalPluginHandler.GlobalPlugin):
 
     def script_descreverImagem(self, gesture):
         try:
+            # Tenta usar o objeto sob o foco do NVDA
             obj = api.getFocusObject()
-            if obj.role != "graphic":
-                speech.speakText("O foco atual não é uma imagem.")
-                return
+            rect = obj.location if obj and obj.location else None
 
-            rect = obj.location
+            # Se não houver objeto válido, captura uma área ao redor do cursor
             if not rect:
-                speech.speakText("Não consegui obter a posição da imagem.")
-                return
+                x, y = api.getMousePosition()
+                rect = (x - 100, y - 100, 200, 200)  # 200x200 pixels centrado no cursor
+                speech.speakText("Não foi detectado objeto acessível, capturando área do cursor.")
 
             tmp_file = capture_screen(rect)
 
