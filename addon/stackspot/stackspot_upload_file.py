@@ -20,7 +20,7 @@ class StackspotFile:
                 'authorization': f'Bearer {token}'
             },
             data=dumps({
-                'file_name': '81292.jpg',
+                'file_name': 'focused_image.png',
                 'target_type': self.context,
                 'target_id': self.target_id
             })

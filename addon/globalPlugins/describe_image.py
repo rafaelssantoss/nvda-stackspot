@@ -1,11 +1,13 @@
 import os
 import sys
-import ctypes
 import tempfile
 import api
 import globalPluginHandler
 import speech
 import logHandler
+import win32gui
+import win32ui
+import win32con
 
 addon_dir = os.path.dirname(os.path.abspath(__file__))
 lib_dir = os.path.join(addon_dir, '..', 'lib')
@@ -17,10 +19,6 @@ for path in (lib_dir, addon_root):
 
 from stackspot.stackspot import Stackspot
 import addonConfig
-try:
-    from PIL import Image
-except ImportError:
-    import Image
 
 client_id = addonConfig.getPref("client_id")
 client_secret = addonConfig.getPref("client_secret")
@@ -29,54 +27,26 @@ slug = addonConfig.getPref("slug")
 
 
 def capture_screen(rect):
-    user32 = ctypes.windll.user32
-    gdi32 = ctypes.windll.gdi32
-
     x, y, w, h = rect
-    width = w
-    height = h
 
-    hdesktop = user32.GetDesktopWindow()
-    desktop_dc = user32.GetWindowDC(hdesktop)
-    img_dc = gdi32.CreateCompatibleDC(desktop_dc)
-    bmp = gdi32.CreateCompatibleBitmap(desktop_dc, width, height)
-    gdi32.SelectObject(img_dc, bmp)
+    hdesktop = win32gui.GetDesktopWindow()
+    desktop_dc = win32gui.GetWindowDC(hdesktop)
+    img_dc = win32ui.CreateDCFromHandle(desktop_dc)
+    mem_dc = img_dc.CreateCompatibleDC()
 
-    SRCCOPY = 0x00CC0020
-    gdi32.BitBlt(img_dc, 0, 0, width, height, desktop_dc, x, y, SRCCOPY)
+    screenshot = win32ui.CreateBitmap()
+    screenshot.CreateCompatibleBitmap(img_dc, w, h)
+    mem_dc.SelectObject(screenshot)
 
-    class BITMAP(ctypes.Structure):
-        _fields_ = [("bmType", ctypes.c_int),
-                    ("bmWidth", ctypes.c_int),
-                    ("bmHeight", ctypes.c_int),
-                    ("bmWidthBytes", ctypes.c_int),
-                    ("bmPlanes", ctypes.c_ushort),
-                    ("bmBitsPixel", ctypes.c_ushort),
-                    ("bmBits", ctypes.c_void_p)]
-
-    bmp_struct = BITMAP()
-    gdi32.GetObjectW(bmp, ctypes.sizeof(bmp_struct), ctypes.byref(bmp_struct))
-
-    total_bytes = bmp_struct.bmHeight * bmp_struct.bmWidthBytes
-    buffer = ctypes.create_string_buffer(total_bytes)
-    gdi32.GetBitmapBits(bmp, total_bytes, buffer)
-
-    image = Image.frombuffer(
-        'RGB',
-        (width, height),
-        buffer,
-        'raw',
-        'BGR',
-        bmp_struct.bmWidthBytes,
-        1
-    )
+    mem_dc.BitBlt((0, 0), (w, h), img_dc, (x, y), win32con.SRCCOPY)
 
     tmp_file = os.path.join(tempfile.gettempdir(), "focused_image.png")
-    image.save(tmp_file, format='PNG')
+    screenshot.SaveBitmapFile(mem_dc, tmp_file)
 
-    gdi32.DeleteObject(bmp)
-    gdi32.DeleteDC(img_dc)
-    user32.ReleaseDC(hdesktop, desktop_dc)
+    mem_dc.DeleteDC()
+    win32gui.DeleteObject(screenshot.GetHandle())
+    img_dc.DeleteDC()
+    win32gui.ReleaseDC(hdesktop, desktop_dc)
 
     return tmp_file
 
@@ -106,7 +76,7 @@ class GlobalPlugin(globalPluginHandler.GlobalPlugin):
 
         except Exception as e:
             logHandler.log.error(f'Error: {e}')
-            speech.speakText(f"Error stackspot")
+            speech.speakText(f"Erro ao processar imagem: {str(e)}")
 
     __gestures = {
         "kb:NVDA+i": "descreverImagem"
