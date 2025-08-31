@@ -1,34 +1,28 @@
 import wx
-import gui.settingsDialogs as settings
+from gui.settingsDialogs import SettingsPanel
 import addonConfig
 
 
-class StackspotSettingsPanel(settings.SettingsPanel):
-    title = "Stackspot AI"
+class StackspotSettingsPanel(SettingsPanel):
+    title = _("StackSpot AI")
 
     def makeSettings(self, sizer):
         sHelper = self.makeSettingsHelper(sizer)
 
         self.clientIdCtrl = sHelper.addLabeledControl(
-            "Client ID:", wx.TextCtrl,
+            _("Client ID:"), wx.TextCtrl,
             value=addonConfig.getPref("client_id")
         )
         self.clientSecretCtrl = sHelper.addLabeledControl(
-            "Client Secret:", wx.TextCtrl,
-            value=addonConfig.getPref("client_secret"),
-            style=wx.TE_PASSWORD
+            _("Client Secret:"), wx.TextCtrl,
+            value=addonConfig.getPref("client_secret")
         )
-        self.realmCtrl = sHelper.addLabeledControl(
-            "Realm:", wx.TextCtrl,
-            value=addonConfig.getPref("realm")
-        )
-        self.slugCtrl = sHelper.addLabeledControl(
-            "Slug do Quick Command:", wx.TextCtrl,
-            value=addonConfig.getPref("slug")
+        self.targetIdCtrl = sHelper.addLabeledControl(
+            _("Target ID:"), wx.TextCtrl,
+            value=addonConfig.getPref("target_id")
         )
 
     def onSave(self):
         addonConfig.setPref("client_id", self.clientIdCtrl.GetValue())
         addonConfig.setPref("client_secret", self.clientSecretCtrl.GetValue())
-        addonConfig.setPref("realm", self.realmCtrl.GetValue())
-        addonConfig.setPref("slug", self.slugCtrl.GetValue())
+        addonConfig.setPref("target_id", self.targetIdCtrl.GetValue())
