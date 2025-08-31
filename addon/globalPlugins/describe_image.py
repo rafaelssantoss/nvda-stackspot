@@ -4,9 +4,12 @@ import sys
 addon_dir = os.path.dirname(os.path.abspath(__file__))
 lib_dir = os.path.join(addon_dir, '..', 'lib')
 lib_dir = os.path.abspath(lib_dir)
-
 if lib_dir not in sys.path:
     sys.path.insert(0, lib_dir)
+
+addon_root = os.path.abspath(os.path.join(addon_dir, '..'))
+if addon_root not in sys.path:
+    sys.path.insert(0, addon_root)
 
 import ctypes
 import struct
