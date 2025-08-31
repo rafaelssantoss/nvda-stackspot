@@ -17,7 +17,10 @@ for path in (lib_dir, addon_root):
 
 from stackspot.stackspot import Stackspot
 import addonConfig
-from PIL import Image
+try:
+    from PIL import Image
+except ImportError:
+    import Image
 
 client_id = addonConfig.getPref("client_id")
 client_secret = addonConfig.getPref("client_secret")
