@@ -77,11 +77,9 @@ class GlobalPlugin(globalPluginHandler.GlobalPlugin):
 
     def script_descreverImagem(self, gesture):
         try:
-            # Tenta usar o objeto sob o foco do NVDA
             obj = api.getFocusObject()
             rect = obj.location if obj and obj.location else None
 
-            # Se não houver objeto válido, captura uma área ao redor do cursor
             if not rect:
                 x, y = api.getMousePosition()
                 rect = (x - 100, y - 100, 200, 200)  # 200x200 pixels centrado no cursor
@@ -94,7 +92,7 @@ class GlobalPlugin(globalPluginHandler.GlobalPlugin):
                 client_secret=client_secret,
                 realm=realm
             )
-            result = stackspot.file(tmp_file, "CONTEXT", "").transcription(slug)
+            result = stackspot.send_file_stackspot(tmp_file, "CONTEXT", "").transcription(slug)
 
             speech.speakText(result)
 

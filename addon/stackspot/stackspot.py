@@ -29,7 +29,7 @@ class Stackspot:
         self.auth = StackspotAuth(self._client_id, self._client_secret, self._realm)
         return self
 
-    def file(self, file, context, targe_id):
+    def send_file_stackspot(self, file, context, targe_id):
         self._file = file
         self._context = context
         self._targe_id = targe_id
