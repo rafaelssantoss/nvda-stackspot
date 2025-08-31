@@ -1,28 +1,41 @@
 import wx
 import gui
 import gui.settingsDialogs as settings
+import addonHandler
 from . import addonConfig
 
 
+addonHandler.initTranslation()
+
+
 class StackspotSettingsPanel(settings.SettingsPanel):
-    title = "StackSpot AI"
+    # Título que vai aparecer no menu Configurações
+    title = _("StackSpot AI")
 
     def makeSettings(self, sizer):
-        self.clientIdCtrl = wx.TextCtrl(self, value=addonConfig.getPref("client_id"))
-        sizer.Add(wx.StaticText(self, label=_("Client ID:")))
-        sizer.Add(self.clientIdCtrl, flag=wx.EXPAND)
+        sHelper = self.makeSettingsHelper(sizer)
 
-        self.clientSecretCtrl = wx.TextCtrl(self, value=addonConfig.getPref("client_secret"), style=wx.TE_PASSWORD)
-        sizer.Add(wx.StaticText(self, label=_("Client Secret:")))
-        sizer.Add(self.clientSecretCtrl, flag=wx.EXPAND)
-
-        self.realmCtrl = wx.TextCtrl(self, value=addonConfig.getPref("realm"))
-        sizer.Add(wx.StaticText(self, label=_("Realm:")))
-        sizer.Add(self.realmCtrl, flag=wx.EXPAND)
-
-        self.slugCtrl = wx.TextCtrl(self, value=addonConfig.getPref("slug"))
-        sizer.Add(wx.StaticText(self, label=_("Slug do Quick Command:")))
-        sizer.Add(self.slugCtrl, flag=wx.EXPAND)
+        self.clientIdCtrl = sHelper.addLabeledControl(
+            _("Client ID:"),
+            wx.TextCtrl,
+            value=addonConfig.getPref("client_id", "")
+        )
+        self.clientSecretCtrl = sHelper.addLabeledControl(
+            _("Client Secret:"),
+            wx.TextCtrl,
+            value=addonConfig.getPref("client_secret", ""),
+            style=wx.TE_PASSWORD
+        )
+        self.realmCtrl = sHelper.addLabeledControl(
+            _("Realm:"),
+            wx.TextCtrl,
+            value=addonConfig.getPref("realm", "")
+        )
+        self.slugCtrl = sHelper.addLabeledControl(
+            _("Slug do Quick Command:"),
+            wx.TextCtrl,
+            value=addonConfig.getPref("slug", "")
+        )
 
     def onSave(self):
         addonConfig.setPref("client_id", self.clientIdCtrl.GetValue())
@@ -31,9 +44,5 @@ class StackspotSettingsPanel(settings.SettingsPanel):
         addonConfig.setPref("slug", self.slugCtrl.GetValue())
 
 
-def onSettingsDialog():
-    if StackspotSettingsPanel not in gui.settingsDialogs.NVDASettingsDialog.categoryClasses:
-        gui.settingsDialogs.NVDASettingsDialog.categoryClasses.append(StackspotSettingsPanel)
-
-
-onSettingsDialog()
+if StackspotSettingsPanel not in gui.settingsDialogs.NVDASettingsDialog.categoryClasses:
+    gui.settingsDialogs.NVDASettingsDialog.categoryClasses.append(StackspotSettingsPanel)

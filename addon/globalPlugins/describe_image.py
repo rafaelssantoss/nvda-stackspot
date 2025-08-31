@@ -49,10 +49,3 @@ class GlobalPlugin(globalPluginHandler.GlobalPlugin):
     __gestures = {
         "kb:NVDA+i": "descreverImagem"
     }
-
-with open('81292.jpg', 'rb') as file:
-    result = Stackspot.instance().credential('client_id',
-                                             'client_secret',
-                                             'realm').file(file, 'CONTEXT', '').transcription('quick-commando-slug')
-
-    print(result)
