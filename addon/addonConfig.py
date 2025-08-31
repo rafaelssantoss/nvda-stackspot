@@ -2,12 +2,13 @@ import config
 
 section = 'StackspotAI'
 
-config.conf.spec[section] = {
-    "client_id": "",
-    "client_secret": "",
-    "realm": "",
-    "slug": ""
-}
+if section not in config.conf.spec:
+    config.conf.spec[section] = {
+        "client_id": "",
+        "client_secret": "",
+        "realm": "",
+        "slug": ""
+    }
 
 
 def getPref(key: str):

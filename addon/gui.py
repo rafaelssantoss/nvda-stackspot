@@ -1,13 +1,10 @@
 import wx
 import gui.settingsDialogs as settings
-import addonHandler
 from . import addonConfig
-
-addonHandler.initTranslation()
 
 
 class StackspotSettingsPanel(settings.SettingsPanel):
-    title = _("StackSpot AI")
+    title = _("Stackspot AI")
 
     def makeSettings(self, sizer):
         sHelper = self.makeSettingsHelper(sizer)
@@ -39,6 +36,3 @@ class StackspotSettingsPanel(settings.SettingsPanel):
         addonConfig.setPref("client_secret", self.clientSecretCtrl.GetValue())
         addonConfig.setPref("realm", self.realmCtrl.GetValue())
         addonConfig.setPref("slug", self.slugCtrl.GetValue())
-
-
-addonHandler.registerSettingsPanel(StackspotSettingsPanel)

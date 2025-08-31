@@ -1,23 +1,19 @@
 import os
 import sys
-
-addon_dir = os.path.dirname(os.path.abspath(__file__))
-lib_dir = os.path.join(addon_dir, '..', 'lib')
-lib_dir = os.path.abspath(lib_dir)
-if lib_dir not in sys.path:
-    sys.path.insert(0, lib_dir)
-
-addon_root = os.path.abspath(os.path.join(addon_dir, '..'))
-if addon_root not in sys.path:
-    sys.path.insert(0, addon_root)
-
 import ctypes
 import struct
 import tempfile
-from ctypes import wintypes
 import api
 import globalPluginHandler
 import speech
+
+addon_dir = os.path.dirname(os.path.abspath(__file__))
+lib_dir = os.path.join(addon_dir, '..', 'lib')
+addon_root = os.path.abspath(os.path.join(addon_dir, '..'))
+
+for path in (lib_dir, addon_root):
+    if path not in sys.path:
+        sys.path.insert(0, path)
 
 from stackspot.stackspot import Stackspot
 import addonConfig
@@ -46,32 +42,32 @@ def capture_screen(rect):
     gdi32.BitBlt(img_dc, 0, 0, width, height, desktop_dc, x, y, SRCCOPY)
 
     class BITMAPFILEHEADER(ctypes.Structure):
-        _fields_ = [("bfType", wintypes.WORD),
-                    ("bfSize", wintypes.DWORD),
-                    ("bfReserved1", wintypes.WORD),
-                    ("bfReserved2", wintypes.WORD),
-                    ("bfOffBits", wintypes.DWORD)]
+        _fields_ = [("bfType", ctypes.c_ushort),
+                    ("bfSize", ctypes.c_uint),
+                    ("bfReserved1", ctypes.c_ushort),
+                    ("bfReserved2", ctypes.c_ushort),
+                    ("bfOffBits", ctypes.c_uint)]
 
     class BITMAPINFOHEADER(ctypes.Structure):
-        _fields_ = [("biSize", wintypes.DWORD),
-                    ("biWidth", wintypes.LONG),
-                    ("biHeight", wintypes.LONG),
-                    ("biPlanes", wintypes.WORD),
-                    ("biBitCount", wintypes.WORD),
-                    ("biCompression", wintypes.DWORD),
-                    ("biSizeImage", wintypes.DWORD),
-                    ("biXPelsPerMeter", wintypes.LONG),
-                    ("biYPelsPerMeter", wintypes.LONG),
-                    ("biClrUsed", wintypes.DWORD),
-                    ("biClrImportant", wintypes.DWORD)]
+        _fields_ = [("biSize", ctypes.c_uint),
+                    ("biWidth", ctypes.c_int),
+                    ("biHeight", ctypes.c_int),
+                    ("biPlanes", ctypes.c_ushort),
+                    ("biBitCount", ctypes.c_ushort),
+                    ("biCompression", ctypes.c_uint),
+                    ("biSizeImage", ctypes.c_uint),
+                    ("biXPelsPerMeter", ctypes.c_int),
+                    ("biYPelsPerMeter", ctypes.c_int),
+                    ("biClrUsed", ctypes.c_uint),
+                    ("biClrImportant", ctypes.c_uint)]
 
     class BITMAP(ctypes.Structure):
-        _fields_ = [("bmType", wintypes.LONG),
-                    ("bmWidth", wintypes.LONG),
-                    ("bmHeight", wintypes.LONG),
-                    ("bmWidthBytes", wintypes.LONG),
-                    ("bmPlanes", wintypes.WORD),
-                    ("bmBitsPixel", wintypes.WORD),
+        _fields_ = [("bmType", ctypes.c_int),
+                    ("bmWidth", ctypes.c_int),
+                    ("bmHeight", ctypes.c_int),
+                    ("bmWidthBytes", ctypes.c_int),
+                    ("bmPlanes", ctypes.c_ushort),
+                    ("bmBitsPixel", ctypes.c_ushort),
                     ("bmBits", ctypes.c_void_p)]
 
     bmp_struct = BITMAP()
