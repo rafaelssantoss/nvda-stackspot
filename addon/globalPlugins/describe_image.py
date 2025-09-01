@@ -23,7 +23,7 @@ slug = addonConfig.getPref("slug")
 
 class GlobalPlugin(globalPluginHandler.GlobalPlugin):
 
-    def run_stackspot_image(self, gesture):
+    def script_runStackSpot(self, gesture):
         speech.speakText("Processando imagem")
 
         binary_png = ScreenCapture.capture_region_around_mouse(300)
@@ -37,5 +37,5 @@ class GlobalPlugin(globalPluginHandler.GlobalPlugin):
         speech.speakText(result)
 
     __gestures = {
-        "kb:NVDA+i": "run_stackspot_image"
+        "kb:NVDA+i": "runStackSpot"
     }
