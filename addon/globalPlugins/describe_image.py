@@ -6,7 +6,6 @@ import api
 import globalPluginHandler
 import speech
 import logHandler
-import struct
 import subprocess
 import time
 
@@ -28,7 +27,7 @@ slug = addonConfig.getPref("slug")
 
 
 def capture_screen(rect):
-    """Captura uma região da tela e retorna como arquivo BMP"""
+    """Captura uma região da tela usando API nativa do Windows"""
     x, y, width, height = rect
 
     user32 = ctypes.windll.user32
@@ -48,83 +47,92 @@ def capture_screen(rect):
     success = gdi32.BitBlt(img_dc, 0, 0, width, height, desktop_dc, x, y, SRCCOPY)
 
     if not success:
+        # Limpar recursos antes de sair
+        gdi32.DeleteObject(bmp)
+        gdi32.DeleteDC(img_dc)
+        user32.ReleaseDC(hdesktop, desktop_dc)
         raise Exception("Falha ao capturar tela")
 
-    # Salvar como BMP
+    # Salvar como BMP usando função nativa do Windows (se disponível)
     tmp_bmp = os.path.join(tempfile.gettempdir(), f"focused_image_{int(time.time())}.bmp")
-    save_as_bmp(tmp_bmp, bmp, width, height)
 
-    # Limpar recursos
-    gdi32.DeleteObject(bmp)
-    gdi32.DeleteDC(img_dc)
-    user32.ReleaseDC(hdesktop, desktop_dc)
+    # Tenta usar SaveBitmap se disponível
+    try:
+        # Define a função SaveBitmap se não estiver definida
+        if not hasattr(gdi32, 'SaveBitmap'):
+            gdi32.SaveBitmap = getattr(gdi32, 'SaveBitmap', None)
 
-    return tmp_bmp
+        if gdi32.SaveBitmap:
+            gdi32.SaveBitmap.argtypes = [ctypes.c_void_p, ctypes.c_void_p, ctypes.c_wchar_p]
+            gdi32.SaveBitmap.restype = ctypes.c_bool
+
+            if gdi32.SaveBitmap(img_dc, bmp, tmp_bmp):
+                # Sucesso ao salvar
+                gdi32.DeleteObject(bmp)
+                gdi32.DeleteDC(img_dc)
+                user32.ReleaseDC(hdesktop, desktop_dc)
+                return tmp_bmp
+    except:
+        pass  # Fallback para método alternativo
+
+    # Método alternativo: usa PowerShell para captura direta
+    try:
+        # Limpar recursos primeiro
+        gdi32.DeleteObject(bmp)
+        gdi32.DeleteDC(img_dc)
+        user32.ReleaseDC(hdesktop, desktop_dc)
+
+        # Usar PowerShell para captura direta
+        return capture_with_powershell(rect)
+    except Exception as e:
+        raise Exception(f"Falha na captura: {str(e)}")
 
 
-def save_as_bmp(filename, bmp, width, height):
-    """Salva o bitmap como arquivo BMP - versão simplificada"""
-    gdi32 = ctypes.windll.gdi32
+def capture_with_powershell(rect):
+    """Captura tela usando PowerShell nativo"""
+    x, y, width, height = rect
+    tmp_bmp = os.path.join(tempfile.gettempdir(), f"focused_image_{int(time.time())}.bmp")
 
-    # Obter informações do bitmap
-    class BITMAP(ctypes.Structure):
-        _fields_ = [
-            ("bmType", ctypes.c_long),
-            ("bmWidth", ctypes.c_long),
-            ("bmHeight", ctypes.c_long),
-            ("bmWidthBytes", ctypes.c_long),
-            ("bmPlanes", ctypes.c_ushort),
-            ("bmBitsPixel", ctypes.c_ushort),
-            ("bmBits", ctypes.c_void_p)
-        ]
+    ps_script = f"""
+    Add-Type -AssemblyName System.Windows.Forms
+    Add-Type -AssemblyName System.Drawing
 
-    bmp_info = BITMAP()
-    gdi32.GetObjectW(bmp, ctypes.sizeof(bmp_info), ctypes.byref(bmp_info))
+    $bounds = [System.Drawing.Rectangle]::new({x}, {y}, {width}, {height})
+    $bmp = New-Object System.Drawing.Bitmap({width}, {height})
+    $graphics = [System.Drawing.Graphics]::FromImage($bmp)
+    $graphics.CopyFromScreen($bounds.Location, [System.Drawing.Point]::Empty, $bounds.Size)
+    $bmp.Save('{tmp_bmp}', [System.Drawing.Imaging.ImageFormat]::Bmp)
+    $graphics.Dispose()
+    $bmp.Dispose()
+    Write-Output "SUCCESS"
+    """
 
-    # Calcular tamanho dos dados
-    buffer_size = bmp_info.bmHeight * bmp_info.bmWidthBytes
-    buffer = ctypes.create_string_buffer(buffer_size)
-    gdi32.GetBitmapBits(bmp, buffer_size, buffer)
+    try:
+        result = subprocess.run(
+            ["powershell", "-Command", ps_script],
+            check=True,
+            capture_output=True,
+            text=True,
+            timeout=10
+        )
 
-    # Escrever arquivo BMP (formato simplificado)
-    with open(filename, 'wb') as f:
-        # File header (14 bytes) - CORRIGIDO
-        file_header = struct.pack('<2sLHHHL',
-                                  b'BM',  # Signature (2s)
-                                  14 + 40 + buffer_size,  # File size (L)
-                                  0,  # Reserved1 (H)
-                                  0,  # Reserved2 (H)
-                                  14 + 40  # Offset (L)
-                                  )
-        f.write(file_header)
-
-        info_header = struct.pack('<LLLHHLLllLL',
-                                  40,  # Header size (L)
-                                  width,  # Width (L)
-                                  height,  # Height (L)
-                                  1,  # Planes (H)
-                                  24,  # Bits per pixel (H)
-                                  0,  # Compression (L)
-                                  buffer_size,  # Image size (L)
-                                  0,  # XPelsPerMeter (l)
-                                  0,  # YPelsPerMeter (l)
-                                  0,  # Colors used (L)
-                                  0  # Colors important (L)
-                                  )
-        f.write(info_header)
-
-        # Escrever dados dos pixels (formato BGR)
-        f.write(buffer)
+        if "SUCCESS" in result.stdout and os.path.exists(tmp_bmp):
+            return tmp_bmp
+        else:
+            raise Exception("Falha na captura via PowerShell")
+    except subprocess.TimeoutExpired:
+        raise Exception("Timeout na captura de tela")
+    except Exception as e:
+        raise Exception(f"Erro no PowerShell: {str(e)}")
 
 
 def convert_bmp_to_png(bmp_path):
-    """Converte BMP para PNG usando PowerShell nativo do Windows"""
-    if not bmp_path or not os.path.exists(bmp_path):
+    """Converte BMP para PNG usando PowerShell"""
+    if not os.path.exists(bmp_path):
         raise Exception("Arquivo BMP não encontrado")
 
     png_path = bmp_path.replace('.bmp', '.png')
 
-    # Script PowerShell para conversão
     ps_script = f"""
     try {{
         Add-Type -AssemblyName System.Drawing
@@ -133,37 +141,33 @@ def convert_bmp_to_png(bmp_path):
         $bitmap.Dispose()
         Write-Output "SUCCESS"
     }} catch {{
-        Write-Output "ERROR: $($_.Exception.Message)"
-        exit 1
+        Write-Output "ERROR"
     }}
     """
 
-    # Executar conversão
     try:
         result = subprocess.run(
             ["powershell", "-Command", ps_script],
             check=True,
             capture_output=True,
             text=True,
-            timeout=15
+            timeout=10
         )
 
-        if "SUCCESS" in result.stdout:
-            # Limpar arquivo BMP temporário
+        if "SUCCESS" in result.stdout and os.path.exists(png_path):
+            # Remove o BMP temporário
             try:
                 os.remove(bmp_path)
             except:
                 pass
             return png_path
         else:
-            raise Exception(f"Falha na conversão: {result.stdout}")
+            # Retorna o BMP original se conversão falhar
+            return bmp_path
 
-    except subprocess.TimeoutExpired:
-        raise Exception("Timeout na conversão de imagem")
-    except subprocess.CalledProcessError as e:
-        raise Exception(f"Erro no PowerShell: {e.stderr}")
-    except Exception as e:
-        raise Exception(f"Erro na conversão: {str(e)}")
+    except:
+        # Fallback: retorna o BMP original
+        return bmp_path
 
 
 def capture_and_convert(rect):
@@ -173,20 +177,22 @@ def capture_and_convert(rect):
         # Captura como BMP
         bmp_file = capture_screen(rect)
 
-        # Converte para PNG
-        png_file = convert_bmp_to_png(bmp_file)
+        if not bmp_file or not os.path.exists(bmp_file):
+            raise Exception("Arquivo BMP não foi criado")
 
-        # Verifica se o PNG foi criado
-        if os.path.exists(png_file) and os.path.getsize(png_file) > 0:
-            return png_file
-        else:
-            raise Exception("Arquivo PNG não foi criado corretamente")
+        # Converte para PNG
+        final_file = convert_bmp_to_png(bmp_file)
+
+        if not os.path.exists(final_file):
+            raise Exception("Arquivo final não foi criado")
+
+        return final_file
 
     except Exception as e:
         logHandler.log.error(f"Erro na captura/conversão: {e}")
-        # Fallback: tenta usar o BMP se a conversão falhar
+        # Tenta retornar o BMP se existir
         if bmp_file and os.path.exists(bmp_file):
-            speech.speakText("Usando formato BMP como fallback")
+            speech.speakText("Usando formato BMP")
             return bmp_file
         raise
 
@@ -204,13 +210,8 @@ class GlobalPlugin(globalPluginHandler.GlobalPlugin):
                 rect = (x - 100, y - 100, 200, 200)
                 speech.speakText("Capturando área do cursor.")
 
-            # Captura e converte para PNG
+            # Captura e converte
             tmp_file = capture_and_convert(rect)
-
-            # Verifica o formato do arquivo
-            file_ext = os.path.splitext(tmp_file)[1].lower()
-            if file_ext == '.bmp':
-                speech.speakText("Aviso: usando formato BMP")
 
             # Envia para o Stackspot
             stackspot = Stackspot.instance().credential(
@@ -225,10 +226,10 @@ class GlobalPlugin(globalPluginHandler.GlobalPlugin):
 
         except Exception as e:
             logHandler.log.error(f'Error: {e}')
-            speech.speakText(f"Erro ao processar imagem: {str(e)}")
+            speech.speakText(f"Erro: {str(e)}")
 
         finally:
-            # Limpa arquivo temporário (se existir)
+            # Limpa arquivo temporário
             if tmp_file and os.path.exists(tmp_file):
                 try:
                     os.remove(tmp_file)
