@@ -52,7 +52,7 @@ def capture_screen(rect):
 
     # Salvar como BMP
     tmp_bmp = os.path.join(tempfile.gettempdir(), f"focused_image_{int(time.time())}.bmp")
-    save_as_bmp(tmp_bmp, img_dc, bmp, width, height)
+    save_as_bmp(tmp_bmp, bmp, width, height)
 
     # Limpar recursos
     gdi32.DeleteObject(bmp)
@@ -62,8 +62,9 @@ def capture_screen(rect):
     return tmp_bmp
 
 
-def save_as_bmp(filename, img_dc, bmp, width, height):
-    """Salva o bitmap como arquivo BMP"""
+def save_as_bmp(filename, bmp, width, height):
+    """Salva o bitmap como arquivo BMP - versão simplificada"""
+    gdi32 = ctypes.windll.gdi32
 
     # Obter informações do bitmap
     class BITMAP(ctypes.Structure):
@@ -78,7 +79,6 @@ def save_as_bmp(filename, img_dc, bmp, width, height):
         ]
 
     bmp_info = BITMAP()
-    gdi32 = ctypes.windll.gdi32
     gdi32.GetObjectW(bmp, ctypes.sizeof(bmp_info), ctypes.byref(bmp_info))
 
     # Calcular tamanho dos dados
@@ -86,43 +86,36 @@ def save_as_bmp(filename, img_dc, bmp, width, height):
     buffer = ctypes.create_string_buffer(buffer_size)
     gdi32.GetBitmapBits(bmp, buffer_size, buffer)
 
-    # Escrever arquivo BMP
+    # Escrever arquivo BMP (formato simplificado)
     with open(filename, 'wb') as f:
-        # File header (14 bytes)
+        # File header (14 bytes) - CORRIGIDO
         file_header = struct.pack('<2sLHHHL',
-                                  b'BM',  # Signature
-                                  14 + 40 + buffer_size,  # File size
-                                  0, 0,  # Reserved
-                                  14 + 40,  # Pixel data offset
+                                  b'BM',  # Signature (2s)
+                                  14 + 40 + buffer_size,  # File size (L)
+                                  0,  # Reserved1 (H)
+                                  0,  # Reserved2 (H)
+                                  14 + 40  # Offset (L)
                                   )
         f.write(file_header)
 
-        # Info header (40 bytes)
-        info_header = struct.pack('<LLLHHLLLLLL',
-                                  40,  # Header size
-                                  width,  # Width
-                                  height,  # Height
-                                  1,  # Planes
-                                  24,  # Bits per pixel
-                                  0,  # Compression
-                                  buffer_size,  # Image size
-                                  0, 0,  # XPelsPerMeter, YPelsPerMeter
-                                  0,  # Colors used
-                                  0  # Colors important
+        info_header = struct.pack('<LLLHHLLllLL',
+                                  40,  # Header size (L)
+                                  width,  # Width (L)
+                                  height,  # Height (L)
+                                  1,  # Planes (H)
+                                  24,  # Bits per pixel (H)
+                                  0,  # Compression (L)
+                                  buffer_size,  # Image size (L)
+                                  0,  # XPelsPerMeter (l)
+                                  0,  # YPelsPerMeter (l)
+                                  0,  # Colors used (L)
+                                  0  # Colors important (L)
                                   )
         f.write(info_header)
 
-        # Pixel data (BGR format, bottom-to-top)
-        for y in range(height - 1, -1, -1):
-            start = y * bmp_info.bmWidthBytes
-            end = start + width * 3
-            line_data = buffer[start:end]
-            f.write(line_data)
+        # Escrever dados dos pixels (formato BGR)
+        f.write(buffer)
 
-            # Padding para múltiplo de 4 bytes
-            padding = (4 - (width * 3) % 4) % 4
-            if padding:
-                f.write(b'\x00' * padding)
 
 def convert_bmp_to_png(bmp_path):
     """Converte BMP para PNG usando PowerShell nativo do Windows"""
