@@ -6,6 +6,9 @@ import api
 import globalPluginHandler
 import speech
 import logHandler
+import struct
+import subprocess
+import time
 
 addon_dir = os.path.dirname(os.path.abspath(__file__))
 lib_dir = os.path.join(addon_dir, '..', 'lib')
@@ -18,8 +21,6 @@ for path in (lib_dir, addon_root):
 from stackspot.stackspot import Stackspot
 import addonConfig
 
-from PIL import Image
-
 client_id = addonConfig.getPref("client_id")
 client_secret = addonConfig.getPref("client_secret")
 realm = addonConfig.getPref("realm")
@@ -27,9 +28,8 @@ slug = addonConfig.getPref("slug")
 
 
 def capture_screen(rect):
-    x, y, w, h = rect
-    width = w
-    height = h
+    """Captura uma região da tela e retorna como arquivo BMP"""
+    x, y, width, height = rect
 
     user32 = ctypes.windll.user32
     gdi32 = ctypes.windll.gdi32
@@ -37,66 +37,149 @@ def capture_screen(rect):
     hdesktop = user32.GetDesktopWindow()
     desktop_dc = user32.GetWindowDC(hdesktop)
     img_dc = gdi32.CreateCompatibleDC(desktop_dc)
+
     bmp = gdi32.CreateCompatibleBitmap(desktop_dc, width, height)
     gdi32.SelectObject(img_dc, bmp)
 
     SRCCOPY = 0x00CC0020
-    gdi32.BitBlt(img_dc, 0, 0, width, height, desktop_dc, x, y, SRCCOPY)
+    success = gdi32.BitBlt(img_dc, 0, 0, width, height, desktop_dc, x, y, SRCCOPY)
 
-    class BITMAP(ctypes.Structure):
-        _fields_ = [("bmType", ctypes.c_int),
-                    ("bmWidth", ctypes.c_int),
-                    ("bmHeight", ctypes.c_int),
-                    ("bmWidthBytes", ctypes.c_int),
-                    ("bmPlanes", ctypes.c_ushort),
-                    ("bmBitsPixel", ctypes.c_ushort),
-                    ("bmBits", ctypes.c_void_p)]
+    if not success:
+        raise Exception("Falha ao capturar tela")
 
-    bmp_struct = BITMAP()
-    gdi32.GetObjectW(bmp, ctypes.sizeof(bmp_struct), ctypes.byref(bmp_struct))
-
-    # Calcular tamanho do buffer
-    if bmp_struct.bmBitsPixel == 32:
-        # 32 bits por pixel (ARGB)
-        buffer_size = bmp_struct.bmHeight * bmp_struct.bmWidth * 4
-    else:
-        # 24 bits por pixel (RGB)
-        buffer_size = bmp_struct.bmHeight * bmp_struct.bmWidth * 3
-
-    buffer = ctypes.create_string_buffer(buffer_size)
-    gdi32.GetBitmapBits(bmp, buffer_size, buffer)
-
-    # Criar imagem PIL a partir do buffer
-    if bmp_struct.bmBitsPixel == 32:
-        # Converter ARGB para RGB
-        image = Image.frombuffer(
-            'RGBA',
-            (width, height),
-            buffer,
-            'raw',
-            'BGRA',  # Windows usa BGR
-            0, 1
-        )
-        image = image.convert('RGB')
-    else:
-        # RGB direto
-        image = Image.frombuffer(
-            'RGB',
-            (width, height),
-            buffer,
-            'raw',
-            'BGR',  # Windows usa BGR
-            0, 1
-        )
-
-    tmp_file = os.path.join(tempfile.gettempdir(), "focused_image.png")
-    image.save(tmp_file, format='PNG', optimize=True)
+    tmp_bmp = os.path.join(tempfile.gettempdir(), f"focused_image_{int(time.time())}.bmp")
+    save_as_bmp(tmp_bmp, img_dc, bmp, width, height)
 
     gdi32.DeleteObject(bmp)
     gdi32.DeleteDC(img_dc)
     user32.ReleaseDC(hdesktop, desktop_dc)
 
-    return tmp_file
+    return tmp_bmp
+
+
+def save_as_bmp(filename, img_dc, bmp, width, height):
+    """Salva o bitmap como arquivo BMP"""
+    class BITMAP(ctypes.Structure):
+        _fields_ = [
+            ("bmType", ctypes.c_long),
+            ("bmWidth", ctypes.c_long),
+            ("bmHeight", ctypes.c_long),
+            ("bmWidthBytes", ctypes.c_long),
+            ("bmPlanes", ctypes.c_ushort),
+            ("bmBitsPixel", ctypes.c_ushort),
+            ("bmBits", ctypes.c_void_p)
+        ]
+
+    bmp_info = BITMAP()
+    gdi32 = ctypes.windll.gdi32
+    gdi32.GetObjectW(bmp, ctypes.sizeof(bmp_info), ctypes.byref(bmp_info))
+
+    buffer_size = bmp_info.bmHeight * bmp_info.bmWidthBytes
+    buffer = ctypes.create_string_buffer(buffer_size)
+    gdi32.GetBitmapBits(bmp, buffer_size, buffer)
+
+    # Escrever arquivo BMP
+    with open(filename, 'wb') as f:
+        # File header (14 bytes)
+        file_header = struct.pack('<2sLHHHL',
+                                  b'BM',
+                                  14 + 40 + buffer_size,
+                                  0, 0,
+                                  14 + 40,
+                                  )
+        f.write(file_header)
+
+        # Info header (40 bytes)
+        info_header = struct.pack('<LLLHHLLLLLL',
+                                  40,
+                                  width,
+                                  height,
+                                  1,
+                                  24,
+                                  0,
+                                  buffer_size,
+                                  0, 0,
+                                  0,
+                                  0
+                                  )
+        f.write(info_header)
+
+        # Pixel data (BGR format, bottom-to-top)
+        for y in range(height - 1, -1, -1):
+            start = y * bmp_info.bmWidthBytes
+            end = start + width * 3
+            line_data = buffer[start:end]
+            f.write(line_data)
+
+            # Padding para múltiplo de 4 bytes
+            padding = (4 - (width * 3) % 4) % 4
+            if padding:
+                f.write(b'\x00' * padding)
+
+def convert_bmp_to_png(bmp_path):
+    """Converte BMP para PNG usando PowerShell nativo do Windows"""
+    if not bmp_path or not os.path.exists(bmp_path):
+        raise Exception("Arquivo BMP não encontrado")
+
+    png_path = bmp_path.replace('.bmp', '.png')
+
+    # Script PowerShell para conversão
+    ps_script = f"""
+    try {{
+        Add-Type -AssemblyName System.Drawing
+        $bitmap = [System.Drawing.Bitmap]::FromFile('{bmp_path}')
+        $bitmap.Save('{png_path}', [System.Drawing.Imaging.ImageFormat]::Png)
+        $bitmap.Dispose()
+        Write-Output "SUCCESS"
+    }} catch {{
+        Write-Output "ERROR: $($_.Exception.Message)"
+        exit 1
+    }}
+    """
+    try:
+        result = subprocess.run(
+            ["powershell", "-Command", ps_script],
+            check=True,
+            capture_output=True,
+            text=True,
+            timeout=15
+        )
+        if "SUCCESS" in result.stdout:
+            # Limpar arquivo BMP temporário
+            try:
+                os.remove(bmp_path)
+            except:
+                pass
+            return png_path
+        else:
+            raise Exception(f"Falha na conversão: {result.stdout}")
+
+    except subprocess.TimeoutExpired:
+        raise Exception("Timeout na conversão de imagem")
+    except subprocess.CalledProcessError as e:
+        raise Exception(f"Erro no PowerShell: {e.stderr}")
+    except Exception as e:
+        raise Exception(f"Erro na conversão: {str(e)}")
+
+
+def capture_and_convert(rect):
+    """Captura a tela e converte para PNG"""
+    try:
+        bmp_file = capture_screen(rect)
+
+        png_file = convert_bmp_to_png(bmp_file)
+
+        if os.path.exists(png_file) and os.path.getsize(png_file) > 0:
+            return png_file
+        else:
+            raise Exception("Arquivo PNG não foi criado corretamente")
+
+    except Exception as e:
+        logHandler.log.error(f"Erro na captura/conversão: {e}")
+        if os.path.exists(bmp_file):
+            speech.speakText("Usando formato BMP como fallback")
+            return bmp_file
+        raise
 
 
 class GlobalPlugin(globalPluginHandler.GlobalPlugin):
@@ -109,9 +192,12 @@ class GlobalPlugin(globalPluginHandler.GlobalPlugin):
             if not rect:
                 x, y = api.getMousePosition()
                 rect = (x - 100, y - 100, 200, 200)
-                speech.speakText("Não foi detectado objeto acessível, capturando área do cursor.")
+                speech.speakText("Capturando área do cursor.")
 
-            tmp_file = capture_screen(rect)
+            tmp_file = capture_and_convert(rect)
+            file_ext = os.path.splitext(tmp_file)[1].lower()
+            if file_ext == '.bmp':
+                speech.speakText("Aviso: usando formato BMP")
 
             stackspot = Stackspot.instance().credential(
                 client_id=client_id,
@@ -119,6 +205,11 @@ class GlobalPlugin(globalPluginHandler.GlobalPlugin):
                 realm=realm
             )
             result = stackspot.send_file_stackspot(tmp_file, "CONTEXT", "").transcription(slug)
+
+            try:
+                os.remove(tmp_file)
+            except:
+                pass
 
             speech.speakText(result)
 
