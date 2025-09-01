@@ -2,6 +2,7 @@ import os
 import sys
 import globalPluginHandler
 import speech
+import logHandler
 
 addon_dir = os.path.dirname(os.path.abspath(__file__))
 lib_dir = os.path.join(addon_dir, '..', 'lib')
@@ -24,17 +25,27 @@ slug = addonConfig.getPref("slug")
 class GlobalPlugin(globalPluginHandler.GlobalPlugin):
 
     def script_runStackSpot(self, gesture):
-        speech.speakText("Processando imagem")
+        speech.speakText("Processando imagem...")
 
-        binary_png = ScreenCapture.capture_region_around_mouse(300)
-        stackspot = Stackspot.instance().credential(
-            client_id=client_id,
-            client_secret=client_secret,
-            realm=realm
-        )
+        try:
+            binary_png = ScreenCapture.capture_region_around_mouse(300)
 
-        result = stackspot.send_file_stackspot(binary_png, "CONTEXT", "").transcription(slug)
-        speech.speakText(result)
+            stackspot = Stackspot.instance().credential(
+                client_id=client_id,
+                client_secret=client_secret,
+                realm=realm
+            )
+
+            result = stackspot.send_file_stackspot(
+                binary_png,
+                "CONTEXT",
+                ""
+            ).transcription(slug)
+
+            speech.speakText(result)
+        except Exception as e:
+            logHandler.log.error(f'Error: {e}')
+            speech.speakText("Erro ao processar imagem")
 
     __gestures = {
         "kb:NVDA+i": "runStackSpot"
