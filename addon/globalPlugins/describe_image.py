@@ -34,22 +34,27 @@ def capture_screen(rect):
     user32 = ctypes.windll.user32
     gdi32 = ctypes.windll.gdi32
 
+    # Obter handle da área de trabalho
     hdesktop = user32.GetDesktopWindow()
     desktop_dc = user32.GetWindowDC(hdesktop)
     img_dc = gdi32.CreateCompatibleDC(desktop_dc)
 
+    # Criar bitmap
     bmp = gdi32.CreateCompatibleBitmap(desktop_dc, width, height)
     gdi32.SelectObject(img_dc, bmp)
 
+    # Copiar região da tela
     SRCCOPY = 0x00CC0020
     success = gdi32.BitBlt(img_dc, 0, 0, width, height, desktop_dc, x, y, SRCCOPY)
 
     if not success:
         raise Exception("Falha ao capturar tela")
 
+    # Salvar como BMP
     tmp_bmp = os.path.join(tempfile.gettempdir(), f"focused_image_{int(time.time())}.bmp")
     save_as_bmp(tmp_bmp, img_dc, bmp, width, height)
 
+    # Limpar recursos
     gdi32.DeleteObject(bmp)
     gdi32.DeleteDC(img_dc)
     user32.ReleaseDC(hdesktop, desktop_dc)
@@ -59,6 +64,8 @@ def capture_screen(rect):
 
 def save_as_bmp(filename, img_dc, bmp, width, height):
     """Salva o bitmap como arquivo BMP"""
+
+    # Obter informações do bitmap
     class BITMAP(ctypes.Structure):
         _fields_ = [
             ("bmType", ctypes.c_long),
@@ -74,6 +81,7 @@ def save_as_bmp(filename, img_dc, bmp, width, height):
     gdi32 = ctypes.windll.gdi32
     gdi32.GetObjectW(bmp, ctypes.sizeof(bmp_info), ctypes.byref(bmp_info))
 
+    # Calcular tamanho dos dados
     buffer_size = bmp_info.bmHeight * bmp_info.bmWidthBytes
     buffer = ctypes.create_string_buffer(buffer_size)
     gdi32.GetBitmapBits(bmp, buffer_size, buffer)
@@ -82,25 +90,25 @@ def save_as_bmp(filename, img_dc, bmp, width, height):
     with open(filename, 'wb') as f:
         # File header (14 bytes)
         file_header = struct.pack('<2sLHHHL',
-                                  b'BM',
-                                  14 + 40 + buffer_size,
-                                  0, 0,
-                                  14 + 40,
+                                  b'BM',  # Signature
+                                  14 + 40 + buffer_size,  # File size
+                                  0, 0,  # Reserved
+                                  14 + 40,  # Pixel data offset
                                   )
         f.write(file_header)
 
         # Info header (40 bytes)
         info_header = struct.pack('<LLLHHLLLLLL',
-                                  40,
-                                  width,
-                                  height,
-                                  1,
-                                  24,
-                                  0,
-                                  buffer_size,
-                                  0, 0,
-                                  0,
-                                  0
+                                  40,  # Header size
+                                  width,  # Width
+                                  height,  # Height
+                                  1,  # Planes
+                                  24,  # Bits per pixel
+                                  0,  # Compression
+                                  buffer_size,  # Image size
+                                  0, 0,  # XPelsPerMeter, YPelsPerMeter
+                                  0,  # Colors used
+                                  0  # Colors important
                                   )
         f.write(info_header)
 
@@ -136,6 +144,8 @@ def convert_bmp_to_png(bmp_path):
         exit 1
     }}
     """
+
+    # Executar conversão
     try:
         result = subprocess.run(
             ["powershell", "-Command", ps_script],
@@ -144,6 +154,7 @@ def convert_bmp_to_png(bmp_path):
             text=True,
             timeout=15
         )
+
         if "SUCCESS" in result.stdout:
             # Limpar arquivo BMP temporário
             try:
@@ -164,11 +175,15 @@ def convert_bmp_to_png(bmp_path):
 
 def capture_and_convert(rect):
     """Captura a tela e converte para PNG"""
+    bmp_file = None
     try:
+        # Captura como BMP
         bmp_file = capture_screen(rect)
 
+        # Converte para PNG
         png_file = convert_bmp_to_png(bmp_file)
 
+        # Verifica se o PNG foi criado
         if os.path.exists(png_file) and os.path.getsize(png_file) > 0:
             return png_file
         else:
@@ -176,7 +191,8 @@ def capture_and_convert(rect):
 
     except Exception as e:
         logHandler.log.error(f"Erro na captura/conversão: {e}")
-        if os.path.exists(bmp_file):
+        # Fallback: tenta usar o BMP se a conversão falhar
+        if bmp_file and os.path.exists(bmp_file):
             speech.speakText("Usando formato BMP como fallback")
             return bmp_file
         raise
@@ -185,6 +201,7 @@ def capture_and_convert(rect):
 class GlobalPlugin(globalPluginHandler.GlobalPlugin):
 
     def script_descreverImagem(self, gesture):
+        tmp_file = None
         try:
             obj = api.getFocusObject()
             rect = obj.location if obj and obj.location else None
@@ -194,28 +211,36 @@ class GlobalPlugin(globalPluginHandler.GlobalPlugin):
                 rect = (x - 100, y - 100, 200, 200)
                 speech.speakText("Capturando área do cursor.")
 
+            # Captura e converte para PNG
             tmp_file = capture_and_convert(rect)
+
+            # Verifica o formato do arquivo
             file_ext = os.path.splitext(tmp_file)[1].lower()
             if file_ext == '.bmp':
                 speech.speakText("Aviso: usando formato BMP")
 
+            # Envia para o Stackspot
             stackspot = Stackspot.instance().credential(
                 client_id=client_id,
                 client_secret=client_secret,
                 realm=realm
             )
-            result = stackspot.send_file_stackspot(tmp_file, "CONTEXT", "").transcription(slug)
 
-            try:
-                os.remove(tmp_file)
-            except:
-                pass
+            result = stackspot.send_file_stackspot(tmp_file, "CONTEXT", "").transcription(slug)
 
             speech.speakText(result)
 
         except Exception as e:
             logHandler.log.error(f'Error: {e}')
             speech.speakText(f"Erro ao processar imagem: {str(e)}")
+
+        finally:
+            # Limpa arquivo temporário (se existir)
+            if tmp_file and os.path.exists(tmp_file):
+                try:
+                    os.remove(tmp_file)
+                except:
+                    pass
 
     __gestures = {
         "kb:NVDA+i": "descreverImagem"
