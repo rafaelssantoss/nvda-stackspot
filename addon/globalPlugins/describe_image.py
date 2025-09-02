@@ -16,15 +16,15 @@ from stackspot.stackspot import Stackspot
 import addonConfig
 from capture_image import ScreenCapture
 
-client_id = addonConfig.getPref("client_id")
-client_secret = addonConfig.getPref("client_secret")
-realm = addonConfig.getPref("realm")
-slug = addonConfig.getPref("slug")
-
 
 class GlobalPlugin(globalPluginHandler.GlobalPlugin):
 
     def script_runStackSpot(self, gesture):
+        client_id = addonConfig.getPref("client_id")
+        client_secret = addonConfig.getPref("client_secret")
+        realm = addonConfig.getPref("realm")
+        slug = addonConfig.getPref("slug")
+
         speech.speakText("Processando imagem...")
 
         try:
