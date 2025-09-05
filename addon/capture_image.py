@@ -21,7 +21,7 @@ class ScreenCapture:
         """
         Captura uma região do objeto de navegação e retorna PNG binário.
         """
-        nav = api.getNavigationObject()
+        nav = api.getNavigatorObject()
         try:
             left, top, width, height = nav.location
         except TypeError:
