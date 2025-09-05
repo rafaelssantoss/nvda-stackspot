@@ -90,3 +90,6 @@ site/
 # =========================
 *.DS_Store
 *.log
+
+!addon/lib/
+!addon/lib/**

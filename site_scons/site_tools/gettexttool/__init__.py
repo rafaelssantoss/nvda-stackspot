@@ -46,4 +46,3 @@ def generate(env):
 		action=Action("xgettext " + "--omit-header --no-location " + XGETTEXT_COMMON_ARGS,
 			"Generating pot file $TARGET"),
 		suffix=".pot")
-
