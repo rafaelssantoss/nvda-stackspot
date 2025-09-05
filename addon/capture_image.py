@@ -1,7 +1,8 @@
+import api
 import os
 import sys
 import ctypes
-import ctypes.wintypes
+import ui
 
 addon_dir = os.path.dirname(os.path.abspath(__file__))
 lib_dir = os.path.join(addon_dir, '', 'lib')
@@ -16,23 +17,18 @@ import io
 
 class ScreenCapture:
     @staticmethod
-    def get_mouse_position():
-        """Retorna a posição atual do cursor do mouse (x, y)."""
-        pt = ctypes.wintypes.POINT()
-        ctypes.windll.user32.GetCursorPos(ctypes.byref(pt))
-        return pt.x, pt.y
-
-    @staticmethod
-    def capture_region_around_mouse(size=300):
+    def capture_region_around_navigation():
         """
-        Captura uma região quadrada ao redor do mouse e retorna PNG binário.
+        Captura uma região do objeto de navegação e retorna PNG binário.
         """
-        x, y = ScreenCapture.get_mouse_position()
-        half = size // 2
-        left, top = x - half, y - half
-        right, bottom = x + half, y + half
+        nav = api.getNavigatorObject()
+        try:
+            left, top, width, height = nav.location
+        except TypeError:
+            ui.message("Objeto não está visível")
+            return None
 
-        img = ImageGrab.grab(bbox=(left, top, right, bottom))
+        img = ImageGrab.grab(bbox=(left, top, left + width, top + height))
 
         buf = io.BytesIO()
         img.save(buf, format="PNG")
