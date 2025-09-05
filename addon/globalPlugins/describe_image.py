@@ -28,7 +28,10 @@ class GlobalPlugin(globalPluginHandler.GlobalPlugin):
         speech.speakText("Processando imagem...")
 
         try:
-            binary_png = ScreenCapture.capture_region_around_mouse(300)
+            binary_png = ScreenCapture.capture_region_around_navigation()
+
+            if not binary_png:
+                return
 
             stackspot = Stackspot.instance().credential(
                 client_id=client_id,
