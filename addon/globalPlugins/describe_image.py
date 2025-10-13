@@ -17,8 +17,8 @@ import addonConfig
 from capture_image import ScreenCapture
 
 
-AGENT_ID = '01K7D1W68CV6QPDSCYWSTY4N0M'
-REALM = 'stackspot-freemium'
+AGENT_ID = '01K7EXTSM40TP2P7H35M4E3DZY'
+REALM = 'itau'
 
 
 class GlobalPlugin(globalPluginHandler.GlobalPlugin):
