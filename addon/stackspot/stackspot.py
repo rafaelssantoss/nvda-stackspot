@@ -44,7 +44,7 @@ class Stackspot:
         if file_id is None:
             raise Exception('Error getting file id in Stackspot')
 
-        response = (StackspotAgent(token).agent().execute(
+        response = (StackspotAgent(agent_id, token).agent().execute(
             {
                 "streaming": False,
                 "user_prompt": "",
