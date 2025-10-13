@@ -1,6 +1,6 @@
 from .stackspot_auth import StackspotAuth
 from .stackspot_upload_file import StackspotFile
-from .stackspot_quick_command import StackspotQuickCommand
+from .stackspot_agent import StackspotAgent
 
 
 class Stackspot:
@@ -36,7 +36,7 @@ class Stackspot:
         self.upload = StackspotFile(self._file, self._context, self._targe_id)
         return self
 
-    def transcription(self, slug: str):
+    def transcription(self, agent_id):
         token = self.auth.get_access_token()
         self.upload.file_upload(token)
         file_id = self.upload.get_file_id()
@@ -44,11 +44,17 @@ class Stackspot:
         if file_id is None:
             raise Exception('Error getting file id in Stackspot')
 
-        steps = StackspotQuickCommand(token).quick_command().execute(slug, {'upload_ids': [file_id]}).get_callback().get('steps', {})
-        result = None
-        for step in steps:
-            result = step.get('step_result', {}).get('answer')
+        response = (StackspotAgent(token).agent().execute(
+            {
+                "streaming": False,
+                "user_prompt": "",
+                "stackspot_knowledge": False,
+                "return_ks_in_response": True,
+                "upload_ids": [file_id]
+            }
+        ))
 
+        result = response.get('message')
         if result is None:
             return 'Error'
         else:

@@ -1,7 +1,6 @@
 import api
 import os
 import sys
-import ctypes
 import ui
 
 addon_dir = os.path.dirname(os.path.abspath(__file__))
