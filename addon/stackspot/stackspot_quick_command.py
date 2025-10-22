@@ -1,7 +1,7 @@
 import time
 import requests
 from json import dumps
-from datetime import  datetime, timedelta
+from datetime import datetime, timedelta
 
 
 class StackspotQuickCommand:

@@ -17,13 +17,15 @@ import addonConfig
 from capture_image import ScreenCapture
 
 
+AGENT_ID = '01K7EXTSM40TP2P7H35M4E3DZY'
+REALM = 'itau'
+
+
 class GlobalPlugin(globalPluginHandler.GlobalPlugin):
 
     def script_runStackSpot(self, gesture):
         client_id = addonConfig.getPref("client_id")
         client_secret = addonConfig.getPref("client_secret")
-        realm = addonConfig.getPref("realm")
-        slug = addonConfig.getPref("slug")
 
         speech.speakText("Processando imagem...")
 
@@ -36,14 +38,14 @@ class GlobalPlugin(globalPluginHandler.GlobalPlugin):
             stackspot = Stackspot.instance().credential(
                 client_id=client_id,
                 client_secret=client_secret,
-                realm=realm
+                realm=REALM
             )
 
             result = stackspot.send_file_stackspot(
                 binary_png,
                 "CONTEXT",
                 ""
-            ).transcription(slug)
+            ).transcription(AGENT_ID)
 
             speech.speakText(result)
         except Exception as e:
